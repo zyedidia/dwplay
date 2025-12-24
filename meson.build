@@ -6,16 +6,19 @@ project(
 
 cc = meson.get_compiler('c')
 quickjs_dep = subproject('quickjs').get_variable('quickjs_dep')
+plutovg_dep = subproject('plutovg').get_variable('plutovg_dep')
 sdl2_dep = dependency('sdl2')
 m_dep = cc.find_library('m')
 
 srcs = files(
   'src/dwplay.c',
+  'src/canvas.c',
+  'src/js.c',
   'src/gfx_sdl.c',
 )
 
 executable('dwplay',
   srcs,
-  dependencies: [quickjs_dep, sdl2_dep, m_dep],
+  dependencies: [quickjs_dep, sdl2_dep, m_dep, plutovg_dep],
 )
 
