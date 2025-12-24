@@ -1,4 +1,5 @@
 #include "gfx.h"
+
 #include <SDL.h>
 
 static SDL_Window *window;
@@ -29,7 +30,8 @@ gfx_init(int width, int height, const char *title)
     // Enable linear filtering for smooth scaling
     SDL_SetHint(SDL_HINT_RENDER_SCALE_QUALITY, "linear");
 
-    // Create streaming texture for pixel updates (PlutoVG uses premultiplied ARGB)
+    // Create streaming texture for pixel updates (PlutoVG uses premultiplied
+    // ARGB)
     texture = SDL_CreateTexture(renderer, SDL_PIXELFORMAT_ARGB8888,
         SDL_TEXTUREACCESS_STREAMING, width, height);
     if (!texture)

@@ -9,7 +9,7 @@
 #include <string.h>
 #include <time.h>
 
-#define CANVAS_WIDTH 1920
+#define CANVAS_WIDTH  1920
 #define CANVAS_HEIGHT 1080
 
 static char *
@@ -29,7 +29,7 @@ read_file(const char *path)
         return NULL;
     }
 
-    if (fread(buf, 1, len, f) != (size_t)len) {
+    if (fread(buf, 1, len, f) != (size_t) len) {
         free(buf);
         fclose(f);
         return NULL;
@@ -43,20 +43,25 @@ read_file(const char *path)
 static int
 hex_digit(char c)
 {
-    if (c >= '0' && c <= '9') return c - '0';
-    if (c >= 'A' && c <= 'F') return c - 'A' + 10;
-    if (c >= 'a' && c <= 'f') return c - 'a' + 10;
+    if (c >= '0' && c <= '9')
+        return c - '0';
+    if (c >= 'A' && c <= 'F')
+        return c - 'A' + 10;
+    if (c >= 'a' && c <= 'f')
+        return c - 'a' + 10;
     return -1;
 }
 
 static JSValue
 js_unescape(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv)
 {
-    (void)this_val;
-    if (argc < 1) return JS_NewString(ctx, "");
+    (void) this_val;
+    if (argc < 1)
+        return JS_NewString(ctx, "");
 
     const char *str = JS_ToCString(ctx, argv[0]);
-    if (!str) return JS_EXCEPTION;
+    if (!str)
+        return JS_EXCEPTION;
 
     size_t len = strlen(str);
     char *out = malloc(len + 1);
@@ -66,7 +71,7 @@ js_unescape(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv)
     }
 
     size_t j = 0;
-    for (size_t i = 0; i < len; ) {
+    for (size_t i = 0; i < len;) {
         if (str[i] == '%' && i + 5 < len && str[i + 1] == 'u') {
             // %uXXXX
             int h1 = hex_digit(str[i + 2]);
@@ -113,15 +118,16 @@ static int
 is_safe_char(unsigned char c)
 {
     return (c >= 'A' && c <= 'Z') || (c >= 'a' && c <= 'z') ||
-           (c >= '0' && c <= '9') || c == '@' || c == '*' ||
-           c == '_' || c == '+' || c == '-' || c == '.' || c == '/';
+        (c >= '0' && c <= '9') || c == '@' || c == '*' || c == '_' ||
+        c == '+' || c == '-' || c == '.' || c == '/';
 }
 
 static JSValue
 js_escape(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv)
 {
-    (void)this_val;
-    if (argc < 1) return JS_NewString(ctx, "");
+    (void) this_val;
+    if (argc < 1)
+        return JS_NewString(ctx, "");
 
     // Handle tagged template literal: escape`...` passes an array as first arg
     JSValue str_val = argv[0];
@@ -134,7 +140,8 @@ js_escape(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv)
     const char *str = JS_ToCString(ctx, str_val);
     if (free_str_val)
         JS_FreeValue(ctx, str_val);
-    if (!str) return JS_EXCEPTION;
+    if (!str)
+        return JS_EXCEPTION;
 
     size_t len = strlen(str);
     // Worst case: each char becomes %uXXXX (6 chars)
@@ -145,7 +152,7 @@ js_escape(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv)
     }
 
     size_t j = 0;
-    for (size_t i = 0; i < len; ) {
+    for (size_t i = 0; i < len;) {
         unsigned char c = str[i];
         if (is_safe_char(c)) {
             out[j++] = c;
@@ -161,11 +168,12 @@ js_escape(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv)
                 cp = ((c & 0x1F) << 6) | (str[i + 1] & 0x3F);
                 i += 2;
             } else if ((c & 0xF0) == 0xE0 && i + 2 < len) {
-                cp = ((c & 0x0F) << 12) | ((str[i + 1] & 0x3F) << 6) | (str[i + 2] & 0x3F);
+                cp = ((c & 0x0F) << 12) | ((str[i + 1] & 0x3F) << 6) |
+                    (str[i + 2] & 0x3F);
                 i += 3;
             } else if ((c & 0xF8) == 0xF0 && i + 3 < len) {
                 cp = ((c & 0x07) << 18) | ((str[i + 1] & 0x3F) << 12) |
-                     ((str[i + 2] & 0x3F) << 6) | (str[i + 3] & 0x3F);
+                    ((str[i + 2] & 0x3F) << 6) | (str[i + 3] & 0x3F);
                 i += 4;
             } else {
                 // Invalid UTF-8, just encode the byte
@@ -222,8 +230,10 @@ setup_globals(JSContext *ctx, JSValue canvas)
     JS_SetPropertyStr(ctx, global, "R", JS_NewCFunction(ctx, js_R, "R", 4));
 
     // escape/unescape for dweets using eval(unescape(escape`...`)) compression
-    JS_SetPropertyStr(ctx, global, "escape", JS_NewCFunction(ctx, js_escape, "escape", 1));
-    JS_SetPropertyStr(ctx, global, "unescape", JS_NewCFunction(ctx, js_unescape, "unescape", 1));
+    JS_SetPropertyStr(ctx, global, "escape",
+        JS_NewCFunction(ctx, js_escape, "escape", 1));
+    JS_SetPropertyStr(ctx, global, "unescape",
+        JS_NewCFunction(ctx, js_unescape, "unescape", 1));
 
     // c = canvas, x = 2d context
     JS_SetPropertyStr(ctx, global, "c", JS_DupValue(ctx, canvas));
@@ -337,7 +347,8 @@ main(int argc, char **argv)
         goto cleanup;
     }
 
-    JSValue result = JS_Eval(ctx, wrapped, strlen(wrapped), argv[1], JS_EVAL_TYPE_GLOBAL);
+    JSValue result = JS_Eval(ctx, wrapped, strlen(wrapped), argv[1],
+        JS_EVAL_TYPE_GLOBAL);
     free(wrapped);
 
     if (check_exception(ctx, result)) {

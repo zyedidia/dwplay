@@ -1,9 +1,10 @@
 #include "canvas.h"
+
 #include "plutovg.h"
 
 #include <stdio.h>
-#include <string.h>
 #include <stdlib.h>
+#include <string.h>
 
 struct Canvas {
     unsigned width;
@@ -106,8 +107,6 @@ canvas_width_get(struct Canvas *canvas)
 void
 canvas_width_set(struct Canvas *canvas, unsigned val)
 {
-    /* if (val != canvas->width) */
-    /*     fprintf(stderr, "warning: setting canvas width to a different value is not supported\n"); */
     if (canvas->ctx2d)
         ctx2d_reset(canvas->ctx2d);
 }
@@ -118,12 +117,9 @@ canvas_height_get(struct Canvas *canvas)
     return canvas->height;
 }
 
-
 void
 canvas_height_set(struct Canvas *canvas, unsigned val)
 {
-    /* if (val != canvas->height) */
-    /*     fprintf(stderr, "warning: setting canvas height to a different value is not supported\n"); */
     if (canvas->ctx2d)
         ctx2d_reset(canvas->ctx2d);
 }
@@ -151,21 +147,18 @@ ctx2d_reset(struct Context2D *ctx2d)
 static plutovg_color_t
 color_from_argb(uint32_t argb)
 {
-    return PLUTOVG_MAKE_COLOR(
-        ((argb >> 16) & 0xFF) / 255.0f,
-        ((argb >> 8) & 0xFF) / 255.0f,
-        (argb & 0xFF) / 255.0f,
-        ((argb >> 24) & 0xFF) / 255.0f
-    );
+    return PLUTOVG_MAKE_COLOR(((argb >> 16) & 0xFF) / 255.0f,
+        ((argb >> 8) & 0xFF) / 255.0f, (argb & 0xFF) / 255.0f,
+        ((argb >> 24) & 0xFF) / 255.0f);
 }
 
 static uint32_t
 color_to_argb(plutovg_color_t c)
 {
-    uint8_t a = (uint8_t)(c.a * 255.0f);
-    uint8_t r = (uint8_t)(c.r * 255.0f);
-    uint8_t g = (uint8_t)(c.g * 255.0f);
-    uint8_t b = (uint8_t)(c.b * 255.0f);
+    uint8_t a = (uint8_t) (c.a * 255.0f);
+    uint8_t r = (uint8_t) (c.r * 255.0f);
+    uint8_t g = (uint8_t) (c.g * 255.0f);
+    uint8_t b = (uint8_t) (c.b * 255.0f);
     return (a << 24) | (r << 16) | (g << 8) | b;
 }
 
@@ -184,9 +177,11 @@ ctx2d_fillStyle_get(struct Context2D *ctx2d)
 void
 ctx2d_globalAlpha_set(struct Context2D *ctx2d, double globalAlpha)
 {
-    if (globalAlpha < 0.0) globalAlpha = 0.0;
-    if (globalAlpha > 1.0) globalAlpha = 1.0;
-    plutovg_canvas_set_opacity(ctx2d->pvg_canvas, (float)globalAlpha);
+    if (globalAlpha < 0.0)
+        globalAlpha = 0.0;
+    if (globalAlpha > 1.0)
+        globalAlpha = 1.0;
+    plutovg_canvas_set_opacity(ctx2d->pvg_canvas, (float) globalAlpha);
 }
 
 double
@@ -198,7 +193,7 @@ ctx2d_globalAlpha_get(struct Context2D *ctx2d)
 void
 ctx2d_lineWidth_set(struct Context2D *ctx2d, double lineWidth)
 {
-    plutovg_canvas_set_line_width(ctx2d->pvg_canvas, (float)lineWidth);
+    plutovg_canvas_set_line_width(ctx2d->pvg_canvas, (float) lineWidth);
 }
 
 double
@@ -214,20 +209,23 @@ ctx2d_fillRect(struct Context2D *ctx2d, double x, double y, double w, double h)
 {
     plutovg_color_t *c = &ctx2d->fillStyle;
     plutovg_canvas_set_rgba(ctx2d->pvg_canvas, c->r, c->g, c->b, c->a);
-    plutovg_canvas_fill_rect(ctx2d->pvg_canvas, (float)x, (float)y, (float)w, (float)h);
+    plutovg_canvas_fill_rect(ctx2d->pvg_canvas, (float) x, (float) y, (float) w,
+        (float) h);
 }
 
 void
 ctx2d_clearRect(struct Context2D *ctx2d, double x, double y, double w, double h)
 {
     // Clear to white (dwitter's page background)
-    // In browsers, clearRect makes pixels transparent, revealing the page background.
-    // For dwitter compatibility, we clear to white since that's dwitter's background.
+    // In browsers, clearRect makes pixels transparent, revealing the page
+    // background. For dwitter compatibility, we clear to white since that's
+    // dwitter's background.
     float opacity = plutovg_canvas_get_opacity(ctx2d->pvg_canvas);
     plutovg_canvas_set_opacity(ctx2d->pvg_canvas, 1.0f);
     plutovg_canvas_set_rgba(ctx2d->pvg_canvas, 1, 1, 1, 1);
     plutovg_canvas_set_operator(ctx2d->pvg_canvas, PLUTOVG_OPERATOR_SRC);
-    plutovg_canvas_fill_rect(ctx2d->pvg_canvas, (float)x, (float)y, (float)w, (float)h);
+    plutovg_canvas_fill_rect(ctx2d->pvg_canvas, (float) x, (float) y, (float) w,
+        (float) h);
     plutovg_canvas_set_operator(ctx2d->pvg_canvas, PLUTOVG_OPERATOR_SRC_OVER);
     plutovg_canvas_set_opacity(ctx2d->pvg_canvas, opacity);
 }
@@ -242,8 +240,8 @@ void
 ctx2d_arc(struct Context2D *ctx2d, double x, double y, double r,
     double startAngle, double endAngle, int ccw)
 {
-    plutovg_canvas_arc(ctx2d->pvg_canvas, (float)x, (float)y, (float)r,
-        (float)startAngle, (float)endAngle, ccw);
+    plutovg_canvas_arc(ctx2d->pvg_canvas, (float) x, (float) y, (float) r,
+        (float) startAngle, (float) endAngle, ccw);
 }
 
 void
@@ -258,7 +256,7 @@ ctx2d_stroke(struct Context2D *ctx2d)
 void
 ctx2d_scale(struct Context2D *ctx2d, double x, double y)
 {
-    plutovg_canvas_scale(ctx2d->pvg_canvas, (float)x, (float)y);
+    plutovg_canvas_scale(ctx2d->pvg_canvas, (float) x, (float) y);
 }
 
 unsigned char *
