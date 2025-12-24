@@ -1,6 +1,7 @@
 #include "gfx.h"
 #include "quickjs.h"
 
+#include <math.h>
 #include <stdbool.h>
 #include <stdio.h>
 #include <stdlib.h>
@@ -36,6 +37,40 @@ err:
 
 static uint32_t current_fill_color = 0xFF000000; // default black, ARGB
 
+// Convert HSL to RGB
+static void
+hsl_to_rgb(float h, float s, float l, int *r, int *g, int *b)
+{
+    h = fmodf(h, 360.0f);
+    if (h < 0)
+        h += 360.0f;
+    s = s < 0 ? 0 : (s > 1 ? 1 : s);
+    l = l < 0 ? 0 : (l > 1 ? 1 : l);
+
+    float c = (1 - fabsf(2 * l - 1)) * s;
+    float x = c * (1 - fabsf(fmodf(h / 60.0f, 2) - 1));
+    float m = l - c / 2;
+
+    float rf, gf, bf;
+    if (h < 60) {
+        rf = c; gf = x; bf = 0;
+    } else if (h < 120) {
+        rf = x; gf = c; bf = 0;
+    } else if (h < 180) {
+        rf = 0; gf = c; bf = x;
+    } else if (h < 240) {
+        rf = 0; gf = x; bf = c;
+    } else if (h < 300) {
+        rf = x; gf = 0; bf = c;
+    } else {
+        rf = c; gf = 0; bf = x;
+    }
+
+    *r = (int) ((rf + m) * 255);
+    *g = (int) ((gf + m) * 255);
+    *b = (int) ((bf + m) * 255);
+}
+
 // Parse color string to uint32_t (ARGB format)
 static uint32_t
 parse_color(const char *str)
@@ -45,7 +80,15 @@ parse_color(const char *str)
     int b = 0;
     float a = 1.0f;
 
-    if (strncmp(str, "rgba(", 5) == 0) {
+    if (strncmp(str, "hsla(", 5) == 0) {
+        float h, s, l;
+        sscanf(str, "hsla(%f,%f%%,%f%%,%f)", &h, &s, &l, &a);
+        hsl_to_rgb(h, s / 100.0f, l / 100.0f, &r, &g, &b);
+    } else if (strncmp(str, "hsl(", 4) == 0) {
+        float h, s, l;
+        sscanf(str, "hsl(%f,%f%%,%f%%)", &h, &s, &l);
+        hsl_to_rgb(h, s / 100.0f, l / 100.0f, &r, &g, &b);
+    } else if (strncmp(str, "rgba(", 5) == 0) {
         sscanf(str, "rgba(%d,%d,%d,%f)", &r, &g, &b, &a);
     } else if (strncmp(str, "rgb(", 4) == 0) {
         sscanf(str, "rgb(%d,%d,%d)", &r, &g, &b);
