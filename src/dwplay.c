@@ -361,11 +361,14 @@ main(int argc, char **argv)
     JSValue global = JS_GetGlobalObject(ctx);
     JSValue u_func = JS_GetPropertyStr(ctx, global, "u");
 
-    double start_time = get_time();
+    double start_time = -1;
 
     // Main loop
     while (!gfx_poll_quit()) {
-        double t = get_time() - start_time;
+        double now = get_time();
+        if (start_time < 0)
+            start_time = now;
+        double t = now - start_time;
 
         // Call u(t)
         JSValue t_val = JS_NewFloat64(ctx, t);

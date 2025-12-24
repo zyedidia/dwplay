@@ -48,6 +48,11 @@ void
 ctx2d_stroke(struct Context2D *ctx2d);
 void
 ctx2d_scale(struct Context2D *ctx2d, double x, double y);
+void
+ctx2d_setTransform(struct Context2D *ctx2d, double a, double b, double c,
+    double d, double e, double f);
+void
+ctx2d_fillText(struct Context2D *ctx2d, const char *text, double x, double y);
 
 // Get pixel data (ARGB premultiplied format)
 unsigned char *

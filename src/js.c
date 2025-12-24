@@ -170,9 +170,23 @@ parse_color(const char *str)
     } else if (strncmp(str, "rgb(", 4) == 0) {
         sscanf(str, "rgb(%d,%d,%d)", &r, &g, &b);
     } else if (str[0] == '#') {
-        if (strlen(str) == 7) {
+        int ai;
+        if (strlen(str) == 9) {
+            // #RRGGBBAA
+            sscanf(str + 1, "%02x%02x%02x%02x", &r, &g, &b, &ai);
+            a = ai / 255.0f;
+        } else if (strlen(str) == 7) {
+            // #RRGGBB
             sscanf(str + 1, "%02x%02x%02x", &r, &g, &b);
+        } else if (strlen(str) == 5) {
+            // #RGBA
+            sscanf(str + 1, "%1x%1x%1x%1x", &r, &g, &b, &ai);
+            r *= 17;
+            g *= 17;
+            b *= 17;
+            a = (ai * 17) / 255.0f;
         } else if (strlen(str) == 4) {
+            // #RGB
             sscanf(str + 1, "%1x%1x%1x", &r, &g, &b);
             r *= 17;
             g *= 17;
@@ -289,6 +303,54 @@ js_ctx2d_scale(JSContext *ctx, JSValueConst this_val, int argc,
     return JS_UNDEFINED;
 }
 
+// setTransform(a, b, c, d, e, f)
+static JSValue
+js_ctx2d_setTransform(JSContext *ctx, JSValueConst this_val, int argc,
+    JSValueConst *argv)
+{
+    (void) argc;
+    GET_OPAQUE(ctx2d, this_val, struct Context2D, ctx2d_class_id);
+    double a, b, c, d, e, f;
+    if (JS_ToFloat64(ctx, &a, argv[0]))
+        return JS_EXCEPTION;
+    if (JS_ToFloat64(ctx, &b, argv[1]))
+        return JS_EXCEPTION;
+    if (JS_ToFloat64(ctx, &c, argv[2]))
+        return JS_EXCEPTION;
+    if (JS_ToFloat64(ctx, &d, argv[3]))
+        return JS_EXCEPTION;
+    if (JS_ToFloat64(ctx, &e, argv[4]))
+        return JS_EXCEPTION;
+    if (JS_ToFloat64(ctx, &f, argv[5]))
+        return JS_EXCEPTION;
+    ctx2d_setTransform(ctx2d, a, b, c, d, e, f);
+    return JS_UNDEFINED;
+}
+
+// fillText(text, x, y)
+static JSValue
+js_ctx2d_fillText(JSContext *ctx, JSValueConst this_val, int argc,
+    JSValueConst *argv)
+{
+    (void) argc;
+    GET_OPAQUE(ctx2d, this_val, struct Context2D, ctx2d_class_id);
+    const char *text = JS_ToCString(ctx, argv[0]);
+    if (!text)
+        return JS_EXCEPTION;
+    double x, y;
+    if (JS_ToFloat64(ctx, &x, argv[1])) {
+        JS_FreeCString(ctx, text);
+        return JS_EXCEPTION;
+    }
+    if (JS_ToFloat64(ctx, &y, argv[2])) {
+        JS_FreeCString(ctx, text);
+        return JS_EXCEPTION;
+    }
+    ctx2d_fillText(ctx2d, text, x, y);
+    JS_FreeCString(ctx, text);
+    return JS_UNDEFINED;
+}
+
 static const JSCFunctionListEntry ctx2d_proto_funcs[] = {
     JS_CGETSET_DEF("fillStyle", js_ctx2d_fillStyle_get, js_ctx2d_fillStyle_set),
     JS_CGETSET_DEF("globalAlpha", js_ctx2d_globalAlpha_get,
@@ -300,6 +362,8 @@ static const JSCFunctionListEntry ctx2d_proto_funcs[] = {
     JS_CFUNC_DEF("arc", 5, js_ctx2d_arc),
     JS_CFUNC_DEF("stroke", 0, js_ctx2d_stroke),
     JS_CFUNC_DEF("scale", 2, js_ctx2d_scale),
+    JS_CFUNC_DEF("setTransform", 6, js_ctx2d_setTransform),
+    JS_CFUNC_DEF("fillText", 3, js_ctx2d_fillText),
 };
 
 // ============================================================================

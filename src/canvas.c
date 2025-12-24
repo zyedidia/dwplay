@@ -21,6 +21,9 @@ struct Context2D {
 
     plutovg_color_t fillStyle;
     plutovg_color_t strokeStyle;
+
+    plutovg_font_face_t *font_face;
+    float font_size;
 };
 
 static struct Context2D *
@@ -44,6 +47,23 @@ ctx2d_new(struct Canvas *canvas)
     ctx2d->strokeStyle = PLUTOVG_BLACK_COLOR;
     plutovg_canvas_set_opacity(ctx2d->pvg_canvas, 1.0f);
 
+    // Try to load a default font (prefer fonts with good Unicode coverage)
+    static const char *font_paths[] = {
+        "/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf",
+        "/usr/share/fonts/TTF/DejaVuSans.ttf",
+        "/usr/share/fonts/dejavu/DejaVuSans.ttf",
+        "/System/Library/Fonts/Helvetica.ttc",
+        "C:\\Windows\\Fonts\\arial.ttf",
+        NULL
+    };
+    ctx2d->font_face = NULL;
+    for (const char **path = font_paths; *path; path++) {
+        ctx2d->font_face = plutovg_font_face_load_from_file(*path, 0);
+        if (ctx2d->font_face)
+            break;
+    }
+    ctx2d->font_size = 10.0f;
+
     return ctx2d;
 }
 
@@ -52,6 +72,8 @@ ctx2d_destroy(struct Context2D *ctx2d)
 {
     if (!ctx2d)
         return;
+    if (ctx2d->font_face)
+        plutovg_font_face_destroy(ctx2d->font_face);
     plutovg_canvas_destroy(ctx2d->pvg_canvas);
     plutovg_surface_destroy(ctx2d->pvg_surface);
     free(ctx2d);
@@ -256,7 +278,29 @@ ctx2d_stroke(struct Context2D *ctx2d)
 void
 ctx2d_scale(struct Context2D *ctx2d, double x, double y)
 {
-    plutovg_canvas_scale(ctx2d->pvg_canvas, (float) x, (float) y);
+    plutovg_canvas_scale(ctx2d->pvg_canvas, (float)x, (float)y);
+}
+
+void
+ctx2d_setTransform(struct Context2D *ctx2d, double a, double b, double c,
+    double d, double e, double f)
+{
+    plutovg_matrix_t matrix;
+    plutovg_matrix_init(&matrix, (float)a, (float)b, (float)c, (float)d,
+        (float)e, (float)f);
+    plutovg_canvas_set_matrix(ctx2d->pvg_canvas, &matrix);
+}
+
+void
+ctx2d_fillText(struct Context2D *ctx2d, const char *text, double x, double y)
+{
+    if (!ctx2d->font_face)
+        return;
+    plutovg_color_t *c = &ctx2d->fillStyle;
+    plutovg_canvas_set_rgba(ctx2d->pvg_canvas, c->r, c->g, c->b, c->a);
+    plutovg_canvas_set_font(ctx2d->pvg_canvas, ctx2d->font_face, ctx2d->font_size);
+    plutovg_canvas_fill_text(ctx2d->pvg_canvas, text, -1, PLUTOVG_TEXT_ENCODING_UTF8,
+        (float)x, (float)y);
 }
 
 unsigned char *
