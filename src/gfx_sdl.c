@@ -23,7 +23,7 @@ gfx_init(int width, int height, const char *title)
     if (!window)
         return -1;
 
-    renderer = SDL_CreateRenderer(window, -1, SDL_RENDERER_ACCELERATED);
+    renderer = SDL_CreateRenderer(window, -1, SDL_RENDERER_ACCELERATED | SDL_RENDERER_PRESENTVSYNC);
     if (!renderer)
         return -1;
 
