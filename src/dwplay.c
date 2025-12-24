@@ -221,7 +221,7 @@ setup_globals(JSContext *ctx, JSValue canvas)
     // R(r,g,b,a) - returns "rgba(r,g,b,a)" string
     JS_SetPropertyStr(ctx, global, "R", JS_NewCFunction(ctx, js_R, "R", 4));
 
-    // escape/unescape for dwitters using eval(unescape(escape`...`)) compression
+    // escape/unescape for dweets using eval(unescape(escape`...`)) compression
     JS_SetPropertyStr(ctx, global, "escape", JS_NewCFunction(ctx, js_escape, "escape", 1));
     JS_SetPropertyStr(ctx, global, "unescape", JS_NewCFunction(ctx, js_unescape, "unescape", 1));
 
