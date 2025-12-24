@@ -231,6 +231,19 @@ js_ctx2d_arc(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv
     return JS_UNDEFINED;
 }
 
+// scale(x, y)
+static JSValue
+js_ctx2d_scale(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv)
+{
+    (void)argc;
+    GET_OPAQUE(ctx2d, this_val, struct Context2D, ctx2d_class_id);
+    double x, y;
+    if (JS_ToFloat64(ctx, &x, argv[0])) return JS_EXCEPTION;
+    if (JS_ToFloat64(ctx, &y, argv[1])) return JS_EXCEPTION;
+    ctx2d_scale(ctx2d, x, y);
+    return JS_UNDEFINED;
+}
+
 static const JSCFunctionListEntry ctx2d_proto_funcs[] = {
     JS_CGETSET_DEF("fillStyle", js_ctx2d_fillStyle_get, js_ctx2d_fillStyle_set),
     JS_CGETSET_DEF("globalAlpha", js_ctx2d_globalAlpha_get, js_ctx2d_globalAlpha_set),
@@ -240,6 +253,7 @@ static const JSCFunctionListEntry ctx2d_proto_funcs[] = {
     JS_CFUNC_DEF("beginPath", 0, js_ctx2d_beginPath),
     JS_CFUNC_DEF("arc", 5, js_ctx2d_arc),
     JS_CFUNC_DEF("stroke", 0, js_ctx2d_stroke),
+    JS_CFUNC_DEF("scale", 2, js_ctx2d_scale),
 };
 
 // ============================================================================

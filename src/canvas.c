@@ -255,6 +255,12 @@ ctx2d_stroke(struct Context2D *ctx2d)
     plutovg_canvas_stroke_preserve(ctx2d->pvg_canvas);
 }
 
+void
+ctx2d_scale(struct Context2D *ctx2d, double x, double y)
+{
+    plutovg_canvas_scale(ctx2d->pvg_canvas, (float)x, (float)y);
+}
+
 unsigned char *
 ctx2d_get_data(struct Context2D *ctx2d)
 {

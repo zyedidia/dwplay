@@ -40,6 +40,157 @@ read_file(const char *path)
     return buf;
 }
 
+static int
+hex_digit(char c)
+{
+    if (c >= '0' && c <= '9') return c - '0';
+    if (c >= 'A' && c <= 'F') return c - 'A' + 10;
+    if (c >= 'a' && c <= 'f') return c - 'a' + 10;
+    return -1;
+}
+
+static JSValue
+js_unescape(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv)
+{
+    (void)this_val;
+    if (argc < 1) return JS_NewString(ctx, "");
+
+    const char *str = JS_ToCString(ctx, argv[0]);
+    if (!str) return JS_EXCEPTION;
+
+    size_t len = strlen(str);
+    char *out = malloc(len + 1);
+    if (!out) {
+        JS_FreeCString(ctx, str);
+        return JS_EXCEPTION;
+    }
+
+    size_t j = 0;
+    for (size_t i = 0; i < len; ) {
+        if (str[i] == '%' && i + 5 < len && str[i + 1] == 'u') {
+            // %uXXXX
+            int h1 = hex_digit(str[i + 2]);
+            int h2 = hex_digit(str[i + 3]);
+            int h3 = hex_digit(str[i + 4]);
+            int h4 = hex_digit(str[i + 5]);
+            if (h1 >= 0 && h2 >= 0 && h3 >= 0 && h4 >= 0) {
+                int cp = (h1 << 12) | (h2 << 8) | (h3 << 4) | h4;
+                // Encode as UTF-8
+                if (cp < 0x80) {
+                    out[j++] = cp;
+                } else if (cp < 0x800) {
+                    out[j++] = 0xC0 | (cp >> 6);
+                    out[j++] = 0x80 | (cp & 0x3F);
+                } else {
+                    out[j++] = 0xE0 | (cp >> 12);
+                    out[j++] = 0x80 | ((cp >> 6) & 0x3F);
+                    out[j++] = 0x80 | (cp & 0x3F);
+                }
+                i += 6;
+                continue;
+            }
+        } else if (str[i] == '%' && i + 2 < len) {
+            // %XX
+            int h1 = hex_digit(str[i + 1]);
+            int h2 = hex_digit(str[i + 2]);
+            if (h1 >= 0 && h2 >= 0) {
+                out[j++] = (h1 << 4) | h2;
+                i += 3;
+                continue;
+            }
+        }
+        out[j++] = str[i++];
+    }
+    out[j] = '\0';
+
+    JS_FreeCString(ctx, str);
+    JSValue result = JS_NewString(ctx, out);
+    free(out);
+    return result;
+}
+
+static int
+is_safe_char(unsigned char c)
+{
+    return (c >= 'A' && c <= 'Z') || (c >= 'a' && c <= 'z') ||
+           (c >= '0' && c <= '9') || c == '@' || c == '*' ||
+           c == '_' || c == '+' || c == '-' || c == '.' || c == '/';
+}
+
+static JSValue
+js_escape(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv)
+{
+    (void)this_val;
+    if (argc < 1) return JS_NewString(ctx, "");
+
+    // Handle tagged template literal: escape`...` passes an array as first arg
+    JSValue str_val = argv[0];
+    int free_str_val = 0;
+    if (JS_IsArray(argv[0])) {
+        str_val = JS_GetPropertyUint32(ctx, argv[0], 0);
+        free_str_val = 1;
+    }
+
+    const char *str = JS_ToCString(ctx, str_val);
+    if (free_str_val)
+        JS_FreeValue(ctx, str_val);
+    if (!str) return JS_EXCEPTION;
+
+    size_t len = strlen(str);
+    // Worst case: each char becomes %uXXXX (6 chars)
+    char *out = malloc(len * 6 + 1);
+    if (!out) {
+        JS_FreeCString(ctx, str);
+        return JS_EXCEPTION;
+    }
+
+    size_t j = 0;
+    for (size_t i = 0; i < len; ) {
+        unsigned char c = str[i];
+        if (is_safe_char(c)) {
+            out[j++] = c;
+            i++;
+        } else if (c < 0x80) {
+            // Single byte, encode as %XX
+            j += sprintf(out + j, "%%%02X", c);
+            i++;
+        } else {
+            // UTF-8 sequence, decode to code point then encode as %uXXXX
+            int cp = 0;
+            if ((c & 0xE0) == 0xC0 && i + 1 < len) {
+                cp = ((c & 0x1F) << 6) | (str[i + 1] & 0x3F);
+                i += 2;
+            } else if ((c & 0xF0) == 0xE0 && i + 2 < len) {
+                cp = ((c & 0x0F) << 12) | ((str[i + 1] & 0x3F) << 6) | (str[i + 2] & 0x3F);
+                i += 3;
+            } else if ((c & 0xF8) == 0xF0 && i + 3 < len) {
+                cp = ((c & 0x07) << 18) | ((str[i + 1] & 0x3F) << 12) |
+                     ((str[i + 2] & 0x3F) << 6) | (str[i + 3] & 0x3F);
+                i += 4;
+            } else {
+                // Invalid UTF-8, just encode the byte
+                j += sprintf(out + j, "%%%02X", c);
+                i++;
+                continue;
+            }
+            if (cp > 0xFFFF) {
+                // Surrogate pair for characters > 0xFFFF
+                int hi = 0xD800 + ((cp - 0x10000) >> 10);
+                int lo = 0xDC00 + ((cp - 0x10000) & 0x3FF);
+                j += sprintf(out + j, "%%u%04X%%u%04X", hi, lo);
+            } else {
+                j += sprintf(out + j, "%%u%04X", cp);
+            }
+        }
+    }
+    out[j] = '\0';
+
+    JS_FreeCString(ctx, str);
+    JSValue result = JS_NewString(ctx, out);
+    free(out);
+    return result;
+}
+
 static JSValue
 js_R(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv)
 {
@@ -69,6 +220,10 @@ setup_globals(JSContext *ctx, JSValue canvas)
 
     // R(r,g,b,a) - returns "rgba(r,g,b,a)" string
     JS_SetPropertyStr(ctx, global, "R", JS_NewCFunction(ctx, js_R, "R", 4));
+
+    // escape/unescape for dwitters using eval(unescape(escape`...`)) compression
+    JS_SetPropertyStr(ctx, global, "escape", JS_NewCFunction(ctx, js_escape, "escape", 1));
+    JS_SetPropertyStr(ctx, global, "unescape", JS_NewCFunction(ctx, js_unescape, "unescape", 1));
 
     // c = canvas, x = 2d context
     JS_SetPropertyStr(ctx, global, "c", JS_DupValue(ctx, canvas));

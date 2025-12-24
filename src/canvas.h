@@ -26,6 +26,7 @@ void ctx2d_clearRect(struct Context2D *ctx2d, double x, double y, double w, doub
 void ctx2d_beginPath(struct Context2D *ctx2d);
 void ctx2d_arc(struct Context2D *ctx2d, double x, double y, double r, double startAngle, double endAngle, int ccw);
 void ctx2d_stroke(struct Context2D *ctx2d);
+void ctx2d_scale(struct Context2D *ctx2d, double x, double y);
 
 // Get pixel data (ARGB premultiplied format)
 unsigned char *ctx2d_get_data(struct Context2D *ctx2d);
